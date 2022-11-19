@@ -15,14 +15,12 @@ Used to generate svg sprite map.
 
 **vite version:** >=2.0.0
 
-```
+```bash
 yarn add vite-plugin-svg-icons -D
-```
-
-or
-
-```
+# or
 npm i vite-plugin-svg-icons -D
+# or
+pnpm install vite-plugin-svg-icons -D
 ```
 
 ## Usage
@@ -30,72 +28,85 @@ npm i vite-plugin-svg-icons -D
 - Configuration plugin in vite.config.ts
 
 ```ts
-import viteSvgIcons from 'vite-plugin-svg-icons';
-import path from 'path';
+import { createSvgIconsPlugin } from 'vite-plugin-svg-icons'
+import path from 'path'
 
 export default () => {
   return {
     plugins: [
-      viteSvgIcons({
+      createSvgIconsPlugin({
         // Specify the icon folder to be cached
         iconDirs: [path.resolve(process.cwd(), 'src/icons')],
         // Specify symbolId format
         symbolId: 'icon-[dir]-[name]',
+
+        /**
+         * custom insert position
+         * @default: body-last
+         */
+        inject?: 'body-last' | 'body-first'
+
+        /**
+         * custom dom id
+         * @default: __svg__icons__dom__
+         */
+        customDomId: '__svg__icons__dom__',
       }),
     ],
-  };
-};
+  }
+}
+
 ```
 
 - Introduce the registration script in src/main.ts
 
 ```ts
-import 'vite-plugin-svg-icons/register';
+import 'virtual:svg-icons-register'
 ```
 
 Here the svg sprite map has been generated
 
 ## How to use in components
 
-**Vue way**
+### **Vue way**
 
 `/src/components/SvgIcon.vue`
 
 ```vue
 <template>
   <svg aria-hidden="true">
-    <use :xlink:href="symbolId" :fill="color" />
+    <use :href="symbolId" :fill="color" />
   </svg>
 </template>
 
 <script>
-  import { defineComponent, computed } from 'vue';
+import { defineComponent, computed } from 'vue'
 
-  export default defineComponent({
-    name: 'SvgIcon',
-    props: {
-      prefix: {
-        type: String,
-        default: 'icon',
-      },
-      name: {
-        type: String,
-        required: true,
-      },
-      color: {
-        type: String,
-        default: '#333',
-      },
+export default defineComponent({
+  name: 'SvgIcon',
+  props: {
+    prefix: {
+      type: String,
+      default: 'icon',
     },
-    setup(props) {
-      const symbolId = computed(() => `#${props.prefix}-${props.name}`);
-      return { symbolId };
+    name: {
+      type: String,
+      required: true,
     },
-  });
+    color: {
+      type: String,
+      default: '#333',
+    },
+  },
+  setup(props) {
+    const symbolId = computed(() => `#${props.prefix}-${props.name}`)
+    return { symbolId }
+  },
+})
 </script>
 ```
 
-**icons Directory Structure**
+#### **Icons Directory Structure**
 
 ```bash
 # src/icons
@@ -119,32 +130,81 @@ Here the svg sprite map has been generated
 </template>
 
 <script>
-  import { defineComponent, computed } from 'vue';
+import { defineComponent, computed } from 'vue'
 
-  import SvgIcon from './components/SvgIcon.vue';
-  export default defineComponent({
-    name: 'App',
-    components: { SvgIcon },
-  });
+import SvgIcon from './components/SvgIcon.vue'
+export default defineComponent({
+  name: 'App',
+  components: { SvgIcon },
+})
 </script>
 ```
 
-React is used in the same way. Just modify the component to Jsx component
+### **React way**
+
+`/src/components/SvgIcon.jsx`
+
+```jsx
+export default function SvgIcon({
+  name,
+  prefix = 'icon',
+  color = '#333',
+  ...props
+}) {
+  const symbolId = `#${prefix}-${name}`
+
+  return (
+    <svg {...props} aria-hidden="true">
+      <use href={symbolId} fill={color} />
+    </svg>
+  )
+}
+```
+
+#### **Icons Directory Structure**
+
+```bash
+# src/icons
+
+- icon1.svg
+- icon2.svg
+- icon3.svg
+- dir/icon1.svg
+```
+
+`/src/App.jsx`
+
+```jsx
+import SvgIcon from './components/SvgIcon'
+
+export default function App() {
+  return (
+    <>
+      <SvgIcon name="icon1"></SvgIcon>
+      <SvgIcon name="icon1"></SvgIcon>
+      <SvgIcon name="icon1"></SvgIcon>
+      <SvgIcon name="dir-icon1"></SvgIcon>
+    </>
+  )
+}
+```
 
 ### Get all SymbolId
 
 ```ts
-import ids from 'virtual:svg-icons-names';
+import ids from 'virtual:svg-icons-names'
 // => ['icon-icon1','icon-icon2','icon-icon3']
 ```
 
 ### Options
 
-| Parameter | Type | Default | Description |
-| --- | --- | --- | --- |
-| iconDirs | `string[]` | - | Need to generate the icon folder of the Sprite image |
-| symbolId | `string` | `icon-[dir]-[name]` | svg symbolId format, see the description below |
-| svgoOptions | `boolean｜SvgoOptions` | `true` | svg compression configuration, can be an object[Options](https://github.com/svg/svgo) |
+| Parameter   | Type                   | Default               | Description                                                                           |
+| ----------- | ---------------------- | --------------------- | ------------------------------------------------------------------------------------- |
+| iconDirs    | `string[]`             | -                     | Need to generate the icon folder of the Sprite image                                  |
+| symbolId    | `string`               | `icon-[dir]-[name]`   | svg symbolId format, see the description below                                        |
+| svgoOptions | `boolean｜SvgoOptions` | `true`                | svg compression configuration, can be an object[Options](https://github.com/svg/svgo) |
+| inject      | `string`               | `body-last`           | svgDom default insertion position, optional `body-first`                              |
+| customDomId | `string`               | `__svg__icons__dom__` | Customize the ID of the svgDom insert node                                            |
 
 **symbolId**
 
@@ -173,6 +233,19 @@ Then the generated SymbolId is written in the comment
 - dir/dir2/icon1.svg # icon-dir-dir2-icon1
 ```
 
+## Typescript Support
+
+If using `Typescript`, you can add in `tsconfig.json`
+
+```json
+// tsconfig.json
+{
+  "compilerOptions": {
+    "types": ["vite-plugin-svg-icons/client"]
+  }
+}
+```
+
 **Note**
 
 Although the use of folders to distinguish between them can largely avoid the problem of duplicate names, there will also be svgs with multiple folders and the same file name in `iconDirs`.
@@ -185,11 +258,10 @@ This needs to be avoided by the developer himself
 
 ```bash
 
-cd ./example
-
-yarn install
-
-yarn serve
+pnpm install
+cd ./packages/playground/basic
+pnpm run dev
+pnpm run build
 
 ```
 
